@@ -277,12 +277,14 @@ class PokerGame extends EventEmitter {
           amount: this.pot,
           hand: null
         }],
-        showCards: {}
+        showCards: {},
+        communityCards: this.communityCards
       };
 
       this.pot = 0;
       this.roundInProgress = false;
       this.phase = null;
+      this.currentPlayerIndex = -1;
 
       this.emit('roundEnd', result);
       this.emit('stateUpdate', this._getFullState());

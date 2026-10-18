@@ -277,11 +277,11 @@ function handleGameState(state) {
   // If we're not on game view, switch to it
   showView('game');
 
-  // Hide round result UI and overlays when new game state arrives that isn't showdown
-  if (state.phase !== 'showdown') {
+  // Only hide round result UI and overlays when a NEW active round has started!
+  if (state.roundInProgress) {
     showingResult = false;
     roundResultData = null;
-    clearTimeout(nextRoundTimer);
+    clearInterval(nextRoundTimer);
     const overlay = document.getElementById('winner-overlay');
     if (overlay) overlay.style.display = 'none';
     const gameOverOverlay = document.getElementById('game-over-overlay');
@@ -530,7 +530,7 @@ function renderActionPanel(state) {
   const panel = document.getElementById('action-panel');
   const roundActions = document.getElementById('round-actions');
 
-  if (showingResult) {
+  if (showingResult || !state.roundInProgress) {
     panel.style.display = 'none';
     roundActions.style.display = 'flex';
     const nextBtn = document.getElementById('btn-next-round');
@@ -713,23 +713,23 @@ function startAutoAdvance(seconds) {
   const updateTimer = () => {
     const timerSpan = document.getElementById('auto-advance-timer');
     if (timerSpan) timerSpan.textContent = `(${remaining}s)`;
+    const btnTable = document.getElementById('btn-next-round');
+    if (btnTable && (!gameState || !gameState.roundInProgress)) {
+      btnTable.textContent = `▶ Next Round (${remaining}s)`;
+    }
   };
   updateTimer();
 
   nextRoundTimer = setInterval(() => {
     remaining--;
-    if (!showingResult) {
-      clearInterval(nextRoundTimer);
-      const timerSpan = document.getElementById('auto-advance-timer');
-      if (timerSpan) timerSpan.textContent = '';
-      return;
-    }
     updateTimer();
     if (remaining <= 0) {
       clearInterval(nextRoundTimer);
       const timerSpan = document.getElementById('auto-advance-timer');
       if (timerSpan) timerSpan.textContent = '';
-      if (showingResult) {
+      const btnTable = document.getElementById('btn-next-round');
+      if (btnTable) btnTable.textContent = '▶ Next Round';
+      if (!gameState || !gameState.roundInProgress) {
         requestNewRound();
       }
     }
@@ -749,7 +749,7 @@ function showRoundResult(result) {
       div.innerHTML = `
         <div class="winner-name">${escapeHtml(winner.name)}</div>
         <div class="winner-amount">+${formatChips(winner.amount)}</div>
-        ${winner.handName ? `<div class="winner-hand">${escapeHtml(winner.handName)}</div>` : ''}
+        ${winner.handName ? `<div class="winner-hand">${escapeHtml(winner.handName)}</div>` : '<div class="winner-hand" style="color:var(--text-secondary);font-size:13px;">Won uncontested (Opponent folded)</div>'}
       `;
       details.appendChild(div);
     });

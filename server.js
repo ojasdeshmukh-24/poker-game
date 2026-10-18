@@ -27,6 +27,9 @@ const socketMap = new Map();
 // Track roomId -> turn timer Timeout
 const turnTimers = new Map();
 
+// Track roomId -> auto-advance round timer Timeout
+const roundEndTimers = new Map();
+
 // Periodic cleanup of empty rooms (every 5 minutes)
 setInterval(() => {
   roomManager.cleanupEmptyRooms();
@@ -281,12 +284,43 @@ function setupGameListeners(game, roomId) {
       playerHands: transformedHands,
       communityCards: result.communityCards
     });
+
+    // Server-side safety auto-advance (starts next hand automatically in ~6.5s)
+    if (roundEndTimers.has(roomId)) {
+      clearTimeout(roundEndTimers.get(roomId));
+    }
+    const autoAdvanceTimeout = setTimeout(() => {
+      roundEndTimers.delete(roomId);
+      const r = roomManager.getRoom(roomId);
+      if (r && r.game && !r.game.roundInProgress) {
+        let playersWithChips = r.players.filter(p => p.connected && p.chips > 0);
+        if (playersWithChips.length < 2) {
+          for (const p of r.players) {
+            p.chips = r.settings.startingChips;
+          }
+          playersWithChips = r.players.filter(p => p.connected);
+        }
+        if (playersWithChips.length >= 2) {
+          try {
+            console.log(`[Server] Auto-starting next round in room ${roomId}`);
+            r.game.startRound();
+          } catch (e) {
+            console.error(`[Server] Error auto-starting next round: ${e.message}`);
+          }
+        }
+      }
+    }, 6500);
+    roundEndTimers.set(roomId, autoAdvanceTimeout);
   });
 
   game.on('gameEnd', (result) => {
     if (turnTimers.has(roomId)) {
       clearTimeout(turnTimers.get(roomId));
       turnTimers.delete(roomId);
+    }
+    if (roundEndTimers.has(roomId)) {
+      clearTimeout(roundEndTimers.get(roomId));
+      roundEndTimers.delete(roomId);
     }
     io.to(roomId).emit('turn-timer', null);
 
@@ -452,6 +486,11 @@ io.on('connection', (socket) => {
 
       if (room.game.roundInProgress) {
         return callback({ success: false, error: 'Round is already in progress' });
+      }
+
+      if (roundEndTimers.has(roomId)) {
+        clearTimeout(roundEndTimers.get(roomId));
+        roundEndTimers.delete(roomId);
       }
 
       room.game.startRound();
