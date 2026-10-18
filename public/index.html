@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>♠ Texas Hold'em Poker ♥</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🃏</text></svg>">
+</head>
+<body>
+
+  <!-- ==================== LOBBY VIEW ==================== -->
+  <div id="lobby-view" class="view active">
+    <div class="lobby-container">
+      <div class="lobby-header">
+        <h1 class="lobby-title"><span class="suit-spade">♠</span> Texas Hold'em <span class="suit-heart">♥</span></h1>
+        <p class="lobby-subtitle">Multiplayer Poker — Play with friends anywhere</p>
+      </div>
+
+      <div class="lobby-card">
+        <div class="input-group">
+          <label for="player-name">Your Name</label>
+          <input type="text" id="player-name" placeholder="Enter your name..." maxlength="20" autocomplete="off">
+        </div>
+
+        <div class="lobby-actions">
+          <!-- Create Room -->
+          <div class="action-section">
+            <div class="settings-panel">
+              <h3>⚙️ Game Settings</h3>
+              <div class="settings-grid">
+                <div class="input-group">
+                  <label for="setting-chips">Chips</label>
+                  <input type="number" id="setting-chips" value="1000" min="100" step="100">
+                </div>
+                <div class="input-group">
+                  <label for="setting-small-blind">Small Blind</label>
+                  <input type="number" id="setting-small-blind" value="5" min="1">
+                </div>
+                <div class="input-group">
+                  <label for="setting-big-blind">Big Blind</label>
+                  <input type="number" id="setting-big-blind" value="10" min="2">
+                </div>
+              </div>
+            </div>
+            <button id="btn-create-room" class="btn btn-large btn-primary" onclick="createRoom()">
+              <span class="btn-icon">🃏</span> Create Room
+            </button>
+          </div>
+
+          <div class="divider">or</div>
+
+          <!-- Join Room -->
+          <div class="action-section">
+            <div class="join-group">
+              <input type="text" id="room-code-input" placeholder="ROOM CODE" maxlength="6" autocomplete="off"
+                     style="text-transform:uppercase;"
+                     onkeypress="if(event.key==='Enter') joinRoom();">
+              <button id="btn-join-room" class="btn btn-large btn-secondary" onclick="joinRoom()">
+                <span class="btn-icon">🚪</span> Join
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lobby-footer">♠ ♥ ♣ ♦</div>
+    </div>
+  </div>
+
+  <!-- ==================== ROOM VIEW ==================== -->
+  <div id="room-view" class="view">
+    <div class="room-container">
+      <div class="room-header">
+        <h2>🃏 Poker Room</h2>
+        <div class="room-code-display">
+          <span>Room Code:</span>
+          <span id="room-code-value" class="room-code-text">----</span>
+          <button class="btn btn-copy" onclick="copyRoomCode()" title="Copy room code">📋 Code</button>
+          <button class="btn btn-copy" onclick="copyShareLink()" title="Copy one-click share link">🔗 Link</button>
+        </div>
+      </div>
+
+      <div class="room-content">
+        <div class="room-left">
+          <div class="player-list-panel">
+            <h3>Players <span id="player-count">(0/8)</span></h3>
+            <ul id="room-player-list" class="player-list"></ul>
+          </div>
+
+          <div class="room-actions">
+            <button id="btn-start-game" class="btn btn-large btn-success" onclick="startGame()" style="display:none;">
+              <span class="btn-icon">▶</span> Start Game
+            </button>
+            <p id="waiting-message" class="waiting-msg" style="display:none;">Waiting for host to start the game...</p>
+            <button class="btn btn-danger" onclick="leaveRoom()">Leave Room</button>
+          </div>
+        </div>
+
+        <div class="room-right">
+          <div class="chat-panel">
+            <h3>💬 Chat</h3>
+            <div id="room-chat-messages" class="chat-messages"></div>
+            <div class="chat-input-group">
+              <input type="text" id="room-chat-input" placeholder="Type a message..."
+                     onkeypress="if(event.key==='Enter') sendChatMessage();" autocomplete="off">
+              <button class="btn btn-small btn-primary" onclick="sendChatMessage()">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== GAME VIEW ==================== -->
+  <div id="game-view" class="view">
+    <div class="game-container">
+      <!-- Top Bar -->
+      <div class="game-top-bar">
+        <div class="game-top-left">
+          Room: <strong id="game-room-id">----</strong>
+          <span id="tournament-pill" class="tournament-pill" style="display:none;">🏆 LVL 1</span>
+        </div>
+        <div class="game-top-right">
+          <button id="btn-share-link" class="btn btn-small btn-outline" onclick="copyShareLink()" title="Copy one-click invite link">
+            🔗 Invite
+          </button>
+          <button id="btn-ledger" class="btn btn-small btn-outline" onclick="openLedgerModal()" title="View Session Profit/Loss Ledger">
+            📊 Ledger
+          </button>
+          <button id="btn-deck-toggle" class="btn btn-small btn-outline" onclick="toggleFourColorDeck()" title="Toggle 4-Color Deck (♠Black ♥Red ♣Green ♦Blue)">
+            🃏 4-Color
+          </button>
+          <button id="btn-theme-toggle" class="btn btn-small btn-outline" onclick="cycleTheme()" title="Switch Table Felt Color">
+            🎨 Felt
+          </button>
+          <button id="btn-sound-toggle" class="btn btn-small btn-outline" onclick="toggleSound()" title="Toggle Sound Effects">
+            🔊
+          </button>
+          <button id="btn-rebuy" class="btn btn-small btn-success" onclick="playerRebuy()" title="Rebuy starting chips">
+            🔄 Rebuy (+1,000)
+          </button>
+          <button id="btn-host-controls" class="btn btn-small btn-primary" onclick="openHostControls()" style="display:none;" title="Host Powers & Settings">
+            👑 Host Controls
+          </button>
+          <button class="btn btn-small btn-outline" onclick="toggleChat()">💬 Chat</button>
+          <button class="btn btn-small btn-danger" onclick="leaveRoom()">Leave</button>
+        </div>
+      </div>
+
+      <!-- Table Area -->
+      <div class="table-area">
+        <div class="poker-table">
+          <div id="table-felt" class="table-felt theme-emerald">
+            <!-- Floating Reactions Layer -->
+            <div id="table-reactions-layer" class="table-reactions-layer"></div>
+
+            <!-- Seats -->
+            <div id="seats-container"></div>
+
+            <!-- Community Cards & Pot -->
+            <div class="table-center">
+              <div id="tournament-banner" class="tournament-banner" style="display:none;"></div>
+              <div class="pot-display">
+                <div id="pot-chips-container" class="pot-chips-container"></div>
+                <div class="pot-badge">Pot: <span id="pot-amount">0</span></div>
+              </div>
+              <div id="community-cards" class="community-cards"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- My Cards & Live Hand Strength -->
+      <div class="my-cards-panel">
+        <div id="hand-strength-badge" class="hand-strength-badge" style="display:none;"></div>
+        <div id="my-cards" class="my-cards"></div>
+      </div>
+
+      <!-- Table Reactions Quick Bar -->
+      <div id="reactions-bar" class="reactions-bar">
+        <button class="reaction-btn" onclick="sendReaction('🔥')" title="Fire / Hot Hand">🔥</button>
+        <button class="reaction-btn" onclick="sendReaction('💸')" title="Make It Rain">💸</button>
+        <button class="reaction-btn" onclick="sendReaction('🤡')" title="Donkey / Clown">🤡</button>
+        <button class="reaction-btn" onclick="sendReaction('🚀')" title="To The Moon">🚀</button>
+        <button class="reaction-btn" onclick="sendReaction('🎣')" title="Fish">🎣</button>
+        <button class="reaction-btn" onclick="sendReaction('💀')" title="Dead / Busted">💀</button>
+        <button class="reaction-btn" onclick="sendReaction('🍅')" title="Throw Tomato">🍅</button>
+        <button class="reaction-btn" onclick="sendReaction('🍻')" title="Cheers">🍻</button>
+      </div>
+
+      <!-- Action Panel -->
+      <div id="action-panel" class="action-panel" style="display:none;">
+        <button id="btn-fold" class="btn btn-action btn-fold" onclick="performAction('fold')">Fold</button>
+        <button id="btn-check-call" class="btn btn-action btn-check" onclick="performAction(this.dataset.action, this.dataset.amount)">Check</button>
+        <button id="btn-raise" class="btn btn-action btn-raise" onclick="showRaisePanel()">Raise</button>
+      </div>
+
+      <!-- Raise Panel -->
+      <div id="raise-panel" class="raise-panel" style="display:none;">
+        <div class="raise-slider-container">
+          <input type="range" id="raise-slider" min="0" max="1000" value="0"
+                 oninput="updateRaiseValue(this.value)">
+          <input type="number" id="raise-amount" min="0" max="1000" value="0"
+                 oninput="updateRaiseSlider(this.value)">
+        </div>
+        <div class="raise-quick-buttons">
+          <button class="btn btn-small btn-outline" onclick="setRaiseQuick('min')">Min</button>
+          <button class="btn btn-small btn-outline" onclick="setRaiseQuick('half')">½ Pot</button>
+          <button class="btn btn-small btn-outline" onclick="setRaiseQuick('pot')">Pot</button>
+          <button class="btn btn-small btn-outline" onclick="setRaiseQuick('allin')">All-In</button>
+        </div>
+        <div class="raise-confirm">
+          <button class="btn btn-action btn-raise" onclick="confirmRaise()">
+            Raise to <span id="raise-confirm-amount">0</span>
+          </button>
+          <button class="btn btn-small btn-outline" onclick="hideRaisePanel()">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Round End Actions -->
+      <div id="round-actions" class="round-actions" style="display:none;">
+        <button id="btn-next-round" class="btn btn-large btn-success" onclick="requestNewRound()">
+          ▶ Next Round
+        </button>
+      </div>
+
+      <!-- Chat Sidebar -->
+      <div id="game-chat-sidebar" class="game-chat-sidebar">
+        <div class="chat-panel" style="height:100%;border:none;border-radius:0;">
+          <div class="chat-header-game">
+            <h3>💬 Chat</h3>
+            <button class="btn btn-small btn-outline" onclick="toggleChat()">✕</button>
+          </div>
+          <div id="game-chat-messages" class="chat-messages"></div>
+          <div class="chat-input-group">
+            <input type="text" id="game-chat-input" placeholder="Type a message..."
+                   onkeypress="if(event.key==='Enter') sendChatMessage();" autocomplete="off">
+            <button class="btn btn-small btn-primary" onclick="sendChatMessage()">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Winner Overlay -->
+      <div id="winner-overlay" class="winner-overlay" style="display:none;" onclick="dismissWinnerOverlay()">
+        <div class="winner-modal" onclick="event.stopPropagation()">
+          <h2 class="winner-title">🏆 Round Winner</h2>
+          <div id="winner-details" class="winner-details"></div>
+          <div class="winner-actions">
+            <button id="btn-modal-next-round" class="btn btn-large btn-success" onclick="requestNewRound()">
+              ▶ Next Round <span id="auto-advance-timer"></span>
+            </button>
+            <button class="btn btn-large btn-outline" onclick="dismissWinnerOverlay()">View Table</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Over Overlay -->
+      <div id="game-over-overlay" class="winner-overlay" style="display:none;">
+        <div class="winner-modal" onclick="event.stopPropagation()">
+          <h2 class="winner-title">👑 Tournament Complete</h2>
+          <div id="game-over-details" class="winner-details"></div>
+          <div class="winner-actions">
+            <button class="btn btn-large btn-success" onclick="resetGame()">
+              🔄 Play Again (Reset Chips)
+            </button>
+            <button class="btn btn-large btn-outline" onclick="leaveRoom()">
+              🚪 Leave Room
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Busted / Rebuy Modal -->
+      <div id="busted-modal" class="winner-overlay" style="display:none;">
+        <div class="winner-modal" onclick="event.stopPropagation()">
+          <h2 class="winner-title" style="color:var(--accent-red);">💸 Out of Chips!</h2>
+          <p style="color:var(--text-secondary);margin:12px 0 18px;font-size:14px;">You have 0 chips left. Rebuy now to get back in the game for the next hand!</p>
+          <div class="winner-actions">
+            <button class="btn btn-large btn-success" onclick="playerRebuy()">
+              🔄 Rebuy 1,000 Chips
+            </button>
+            <button class="btn btn-large btn-outline" onclick="dismissBustedModal()">
+              👀 Spectate
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session Ledger Modal -->
+      <div id="ledger-modal" class="winner-overlay" style="display:none;" onclick="closeLedgerModal()">
+        <div class="winner-modal host-modal" onclick="event.stopPropagation()">
+          <div class="host-modal-header">
+            <h2 class="winner-title" style="margin-bottom:0;">📊 Session Ledger</h2>
+            <button class="btn btn-small btn-outline" onclick="closeLedgerModal()">✕</button>
+          </div>
+          <p style="color:var(--text-secondary);font-size:12px;margin:6px 0 16px;">
+            Tracks buy-ins, rebuys, and net profit or loss for settling up.
+          </p>
+          <div id="ledger-table-container" class="ledger-table-container"></div>
+          <div class="winner-actions" style="margin-top:20px;">
+            <button class="btn btn-large btn-outline" onclick="closeLedgerModal()">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Host Controls Modal -->
+      <div id="host-controls-modal" class="winner-overlay" style="display:none;" onclick="closeHostControls()">
+        <div class="winner-modal host-modal" onclick="event.stopPropagation()">
+          <div class="host-modal-header">
+            <h2 class="winner-title" style="margin-bottom:0;">👑 Host Controls</h2>
+            <button class="btn btn-small btn-outline" onclick="closeHostControls()">✕</button>
+          </div>
+          <p style="color:var(--text-secondary);font-size:12px;margin:6px 0 16px;">Grant chips, manage players & bots, update blinds, or control the game flow.</p>
+          
+          <!-- Section 1: Player Chip Management -->
+          <div class="host-section">
+            <h3 class="host-section-title">👥 Players & Chip Grants</h3>
+            <div id="host-players-list" class="host-players-list"></div>
+          </div>
+
+          <!-- Section 2: AI Bots -->
+          <div class="host-section">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <h3 class="host-section-title" style="margin-bottom:0;">🤖 AI Bot Players</h3>
+              <button class="btn btn-primary btn-small" onclick="hostAddBot()">+ Add AI Bot</button>
+            </div>
+            <div id="host-bots-list" class="host-players-list"></div>
+          </div>
+
+          <!-- Section 3: Blinds & Settings -->
+          <div class="host-section">
+            <h3 class="host-section-title">⚙️ Table Blinds</h3>
+            <div class="host-blinds-row">
+              <div class="input-group">
+                <label for="host-setting-sb">Small Blind</label>
+                <input type="number" id="host-setting-sb" value="10" min="1">
+              </div>
+              <div class="input-group">
+                <label for="host-setting-bb">Big Blind</label>
+                <input type="number" id="host-setting-bb" value="20" min="2">
+              </div>
+              <button class="btn btn-primary btn-small" onclick="applyHostBlinds()" style="align-self:flex-end;">
+                Update Blinds
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 4: Tournament Mode -->
+          <div class="host-section">
+            <h3 class="host-section-title">🏆 Tournament Mode (Auto-Increasing Blinds)</h3>
+            <div class="host-blinds-row">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:var(--text-primary);">
+                <input type="checkbox" id="host-setting-tournament">
+                Enable Auto Blinds
+              </label>
+              <div class="input-group" style="width:140px;">
+                <label for="host-setting-interval">Double Every (min)</label>
+                <input type="number" id="host-setting-interval" value="5" min="1" max="60">
+              </div>
+              <button class="btn btn-primary btn-small" onclick="applyTournamentSettings()" style="align-self:flex-end;">
+                Save
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 5: Game Actions -->
+          <div class="host-section">
+            <h3 class="host-section-title">⚡ Quick Actions</h3>
+            <div class="host-actions-grid">
+              <button class="btn btn-success btn-small" onclick="forceNextRoundFromHost()">
+                ▶ Force Deal Next Hand
+              </button>
+              <button class="btn btn-secondary btn-small" onclick="resetAllChipsFromHost()">
+                🔄 Reset All Chips (1,000)
+              </button>
+              <button class="btn btn-outline btn-small" onclick="openLedgerModal()">
+                📊 View Session Ledger
+              </button>
+            </div>
+          </div>
+
+          <div class="winner-actions" style="margin-top:20px;">
+            <button class="btn btn-large btn-outline" onclick="closeHostControls()">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="audio.js"></script>
+  <script src="chips.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
